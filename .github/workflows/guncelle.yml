@@ -2,8 +2,8 @@ name: Verileri güncelle ve yayımla
 
 on:
   schedule:
-    # Her saat başı (23. dakikada). Yoğun saatlerde GitHub zamanlanmış görevleri biraz geciktirebilir.
-    - cron: "23 * * * *"
+    # 30 dakikada bir (her saatin 23. ve 53. dakikası). Yoğun saatlerde GitHub zamanlanmış görevleri biraz geciktirebilir.
+    - cron: "23,53 * * * *"
   workflow_dispatch:
   push:
     branches: [main]

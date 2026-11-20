@@ -36,7 +36,7 @@ Tahmin tutmazsa adres `scraper/komisyon_siteleri.json` dosyasına elle yazılabi
 
 ## Otomatik güncelleme ve yayın
 
-`.github/workflows/guncelle.yml` her saat komisyon sitelerini tarar, yeni duyuru varsa
+`.github/workflows/guncelle.yml` 30 dakikada bir komisyon sitelerini tarar, yeni duyuru varsa
 veriyi depoya işler ve siteyi GitHub Pages'e yayımlar. Bunun için bir kez:
 
 1. Bu dalı `main`'e birleştirin (zamanlanmış görevler yalnızca varsayılan dalda çalışır).
