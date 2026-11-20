@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from datetime import datetime, timezone
 
 import pdfplumber
 
@@ -259,8 +258,8 @@ def main():
         ozet[kurum] = {**KAYNAKLAR[kurum], "toplam": toplam, "komisyon_sayisi": len(komisyonlar), "unvanlar": unvan_top}
         print(f"{kurum}: {len(komisyonlar)} komisyon, {toplam} kişi")
 
+    # Zaman damgası yok: içerik değişmedikçe dosya da değişmesin (gereksiz commit olmasın).
     data = {
-        "olusturma": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "kurumlar": ozet,
         "komisyonlar": list(birlestir(kaynak).values()),
     }

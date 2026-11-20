@@ -125,7 +125,7 @@ def siniflandir(baslik: str, komisyon_gruplari: dict[str, set[str]] | None = Non
         belirsiz = len(kurumlar) != 1
     # Kurumla uyuşmayan grupları ele (ör. "zabıt ve icra kâtipliği" → pgm:zabit, icra:icra)
     kurum_gruplari = {}
-    for k in kurumlar:
+    for k in sorted(kurumlar):  # sıralı: set sırası süreçten sürece değişir, gereksiz commit üretir
         gs = gruplar & KURUM_GRUPLARI[k]
         if gruplar and not gs:
             # bu kurum ünvan üzerinden değil, açık bir kurum adıyla geldi; ünvan yoksa genel duyuru
