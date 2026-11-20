@@ -361,7 +361,7 @@
     if (!D.guncelleme) { el.innerHTML = `<span class="canli eski"></span>Komisyon siteleri henüz taranmadı`; return; }
     const ok = Object.values(D.komisyonlar).filter((d) => d.erisim === "ok").length;
     const saat = (Date.now() - new Date(D.guncelleme).getTime()) / 36e5;
-    el.innerHTML = `<span class="canli ${saat > 12 ? "eski" : ""}"></span><span>Son tarama ${esc(zaman(D.guncelleme))} · ${ok}/${K.komisyonlar.length} komisyon sitesi okundu</span>`;
+    el.innerHTML = `<span class="canli ${saat > 3 ? "eski" : ""}"></span><span>Son tarama ${esc(zaman(D.guncelleme))} · ${ok}/${K.komisyonlar.length} komisyon sitesi okundu</span>`;
   }
 
   async function yukle() {
