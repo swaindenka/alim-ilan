@@ -1,0 +1,65 @@
+name: Verileri güncelle ve yayımla
+
+on:
+  schedule:
+    # Her 3 saatte bir (UTC). Komisyonlar genelde mesai saatlerinde duyuru yayımlıyor.
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["site/**", "scraper/**", ".github/workflows/guncelle.yml"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: guncelle
+  cancel-in-progress: false
+
+jobs:
+  guncelle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scraper/requirements.txt
+
+      - run: pip install -r scraper/requirements.txt
+
+      - name: Kontenjan PDF'lerini işle
+        # PDF'ler değişmez; indirilemezse depodaki kontenjan.json kullanılmaya devam eder.
+        run: python scraper/parse_kontenjan.py || echo "::warning::Ek-1 PDF'leri okunamadı, mevcut kontenjan.json kullanılıyor"
+
+      - name: Komisyon sitelerini tara
+        run: python scraper/scrape_duyurular.py --paralel 6
+
+      - name: Değişiklikleri kaydet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # tarama.json her seferinde değişir; yalnızca içerik değiştiyse commit at.
+          git add site/data/durum.json site/data/kontenjan.json scraper/komisyon_siteleri.json
+          if git diff --cached --quiet; then
+            echo "Yeni duyuru yok; yalnızca site yeniden yayımlanacak"
+          else
+            git add site/data/tarama.json
+            git commit -m "veri: otomatik güncelleme $(date -u +'%Y-%m-%d %H:%M') UTC"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
