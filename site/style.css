@@ -99,6 +99,34 @@ h1 { font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.7rem); letter-spacing: -.01em; }
 
 main { padding-block: 24px 48px; display: grid; gap: 28px; }
 
+/* ---------- yeni açıklanan sonuçlar ---------- */
+.yeni {
+  background: var(--st-sonuc-bg); border: 1px solid color-mix(in srgb, var(--st-sonuc) 35%, transparent);
+  border-radius: var(--r); padding: 16px 18px; display: grid; gap: 12px; min-width: 0;
+}
+.yeni-ust { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.yeni-ust h2 { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; color: var(--murekkep); }
+.yeni-ust p { margin: 0; font-size: .88rem; color: var(--murekkep-2); }
+.yeni-ust p b { font-family: var(--f-sayi); font-weight: 500; color: var(--st-sonuc); }
+.yeni-nabiz { width: 10px; height: 10px; border-radius: 50%; background: var(--st-sonuc); box-shadow: 0 0 0 0 var(--st-sonuc); animation: nabiz 2s infinite; flex: none; }
+@keyframes nabiz { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--st-sonuc) 60%, transparent); } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.yeni-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; }
+.yeni-liste li { background: var(--yuzey); border: 1px solid var(--cizgi); border-radius: var(--r); padding: 10px 12px; display: grid; gap: 4px; min-width: 0; align-content: start; }
+.yeni-liste li.taze { border-color: var(--st-sonuc); box-shadow: inset 3px 0 0 var(--st-sonuc); }
+.y-ust { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.y-ad { all: unset; cursor: pointer; font-family: var(--f-baslik); font-weight: 700; font-size: 1.05rem; color: var(--murekkep); }
+.y-ad:hover { text-decoration: underline; }
+.y-ad:focus-visible { outline: 2px solid var(--vurgu); }
+.y-zaman { margin-left: auto; font-size: .76rem; color: var(--murekkep-3); white-space: nowrap; }
+.y-unvan { font-size: .85rem; color: var(--murekkep); overflow-wrap: anywhere; }
+.y-unvan b { font-weight: 500; }
+.yeni-liste a { font-size: .82rem; color: var(--murekkep-2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.4; }
+.yeni-liste a:hover { color: var(--murekkep); text-decoration: underline; }
+.y-ek { color: var(--murekkep-3); white-space: nowrap; }
+.yeni-rozet { display: inline-block; font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--yuzey); background: var(--st-sonuc); border-radius: 3px; padding: 1px 6px; vertical-align: 1px; }
+.yeni-rozet.kucuk { font-size: .62rem; padding: 0 5px; margin-left: 4px; }
+.yeni .daha { background: var(--yuzey); }
+
 /* ---------- kurum özetleri ---------- */
 .ozet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .kart {

@@ -23,16 +23,17 @@ ASAMA_ETIKET = {
 
 # Bu döngüyle ilgisi olmayan duyurular
 HARIC = re.compile(
-    r"\biup\b|iyup|i̇şkur|işkur|temizlik|tercüman|lojman|staj|bilirkişi|arabulucu|"
-    r"aday memur|hazırlayıcı|görevde yükselme|unvan değişikliği|ünvan değişikliği|"
-    r"engelli|ekpss|basın açıklaması|broşür|faaliyet raporu|zabıt kâtipliği eğitim|"
+    r"\biup\b|iyup|i̇şkur|işkur|iş ?gücü|işgücü|temizlik|tercüman|lojman|staj|bilirkişi|arabulucu|uzlaştırma|"
+    r"aday memur|hazırlayıcı|görevde yükselme|unvan değişikliği|ünvan değişikliği|izleme kurulu|ek ders|"
+    r"engelli|ekpss|basın açıklaması|broşür|faaliyet raporu|zabıt kâtipliği eğitim|temel eğitim|"
     r"31\.07\.2025|2025 yılı sözleşmeli|tarihli ilanı ile sözleşmeli infaz koruma memuru, hemşire"
 )
 
+KATIP = r"k[aâ]ti[bp]"  # "kâtibi", "katipliği", "kâtipliği"…
 ILGILI = re.compile(
-    r"sözleşmeli|sozlesmeli|sınav|mülakat|aday tespit|aday listesi|zabıt|mübaşir|icra k[aâ]tib|"
-    r"icra k[aâ]tipli|infaz|\bcte\b|\bpgm\b|hizmetli|şoför|aşçı|teknisyen|koruma ve güvenlik|"
-    r"hemşire|kaloriferci|cezaevi k[aâ]tib|ceza infaz kurumu k[aâ]tib|personel alım|boy[ -]kilo|\bikm\b"
+    rf"sözleşmeli|sozlesmeli|sınav|mülakat|aday tespit|aday listesi|zabıt|mübaşir|icra {KATIP}|"
+    rf"infaz|\bcte\b|c\.t\.e|\bpgm\b|hizmetli|şoför|aşçı|teknisyen|koruma ve güvenlik|"
+    rf"hemşire|kaloriferci|cezaevi {KATIP}|ceza infaz kurumu {KATIP}|büro personel|personel alım|boy\W{0,3}kilo|\bikm\b"
 )
 
 # Ünvan grupları: (grup, desen)
@@ -45,10 +46,10 @@ GRUP_DESEN = [
     ("asci", r"a[şs][çc][ıi]"),
     ("kaloriferci", r"kalorifer"),
     ("hemsire", r"hem[şs]ire"),
-    ("buro", r"cezaevi k[aâ]tib|ceza infaz kurumu k[aâ]tib|büro personel|\bcik k[aâ]tib"),
-    ("ikm", r"infaz ve koruma|infaz koruma|\bikm\b|boy[ -]kilo"),
+    ("buro", rf"cezaevi {KATIP}|ceza infaz kurumu {KATIP}|büro personel|\bcik {KATIP}"),
+    ("ikm", r"infaz ve koruma|infaz koruma|\bikm\b|boy\W{0,3}kilo"),
     ("teknisyen", r"teknisyen"),
-    ("icra", r"icra k[aâ]tib|icra k[aâ]tipli|icra işleri"),
+    ("icra", rf"icra {KATIP}|icra işleri"),
 ]
 
 KURUM_GRUPLARI = {
@@ -58,33 +59,54 @@ KURUM_GRUPLARI = {
 }
 SADECE = {g: [k for k, gs in KURUM_GRUPLARI.items() if g in gs] for g in set().union(*KURUM_GRUPLARI.values())}
 
-CTE_DESEN = re.compile(r"\bcte\b|ceza ve tevkif|tevkifevleri|05\.06\.2026|5766|5\.766")
+CTE_DESEN = re.compile(r"\bcte\b|c\.t\.e|ceza ve tevkif|tevkifevleri|05\.06\.2026|5766|5\.766|ceza infaz kurum|cezaevi")
 PGM_DESEN = re.compile(r"\bpgm\b|personel genel müdürlü")
 ICRA_DESEN = re.compile(r"icra işleri|iidb")
 
+SONUC = r"sonu[çc]|netice"          # sonuç, sonucu, sonuçları, sonucuna…
+KESIN = re.compile(
+    r"nihai|kesin (sonu[çc]|başarı|liste)|kesinleşen|başarı (sıra|liste)|as[iı]l ve yedek|"
+    r"(as[iı]l|yedek) (aday|liste)|yerleştirme sonu[çc]|kazananlar(ın)? listesi|başarılı (olan )?aday|atanmaya hak"
+)
+ON_ASAMA = re.compile(r"başvuru|başsvuru|aday tespit|tespit|ön değerlendirme|boy\W{0,3}kilo|mazeret|itiraz|ertele")
+UYGULAMA = re.compile(r"uygulama|uyglama|klavye|daktilo")
+SOZLU = re.compile(r"sözlü|mülakat")
+SOZLU_CAGRI = re.compile(r"girmeye hak|katılmaya hak|çağrılmaya hak|çağrılacak|katılacak|hak kazanan adayların sorgu")
 
-def asama_bul(t: str) -> str:
-    """t: küçük harfli başlık"""
-    sozlu = r"sözlü|mülakat"
-    if re.search(rf"({sozlu})\s*(sınav[ıi]?|mülakat[ıi]?)?\s*(sonuç|netice)", t) or re.search(
-        r"nihai|kesin (sonuç|başarı|liste)|başarı (sıra|liste)|asıl ve yedek|asil ve yedek|"
-        r"(asıl|yedek) (aday|liste)|yerleştirme sonuç|kazananlar(ın)? listesi|başarılı (olan )?aday", t
-    ):
-        if "girmeye hak" not in t and "katılmaya hak" not in t:
-            return "sonuc"
-    if re.search(rf"uygulama(lı)?\s*sınav[ıi]?\s*(sonuç|netice)", t) or re.search(
-        rf"({sozlu})", t
-    ):
-        return "sozlu"
-    if re.search(r"uygulama|klavye|daktilo|uygulamalı", t):
-        return "uygulama"
-    if re.search(r"aday|başvuru|boy[ -]kilo|red listesi|ön değerlendirme|tespit", t):
-        return "aday"
+
+def asama_bul(t: str) -> tuple[str, bool]:
+    """t: küçük harfli başlık. Dönüş: (aşama, doğrulanmalı_mı).
+
+    doğrulanmalı=True: başlık yalnızca "… Sonuçları" diyor; hangi aşamanın sonucu olduğu belli
+    değil. Tarayıcı duyuru metnine bakar, metin de net değilse tarihe göre karar verir.
+    """
+    sonuc_var = re.search(SONUC, t)
+    if KESIN.search(t) and not SOZLU_CAGRI.search(t):
+        return "sonuc", False
+    # "Sözlü Sınav Sonucu", "Mülakat Sonuçları" (arada en fazla bir kelime)
+    if re.search(rf"(sözlü|mülakat)\w*\s+(\w+\s+)?({SONUC})", t) and not ON_ASAMA.search(t):
+        return "sonuc", False
+    if UYGULAMA.search(t):
+        if SOZLU.search(t):
+            return "sozlu", False      # "uygulama sonuçları ve sözlü sınav tarihleri"
+        if sonuc_var and not ON_ASAMA.search(t) and not re.search(r"girmeye|katılmaya|çağrıl", t):
+            return "sozlu", False      # uygulama sınavı sonuçlandı → sıradaki aşama sözlü
+        return "uygulama", False       # uygulama sınavına çağrı, mazeret, başvuru sonuçları
+    if "hak kazan" in t:
+        if SOZLU.search(t) or SOZLU_CAGRI.search(t):
+            return "sozlu", False
+        return "sonuc", True           # "Şoför hak kazanan adaylara ilişkin liste" → metne/tarihe bak
+    if SOZLU.search(t):
+        return "sozlu", False
+    if sonuc_var and not ON_ASAMA.search(t):
+        return "sonuc", True           # "Sözleşmeli Hemşire Sonuçları", "Personel Alım Sonuçları"
+    if re.search(r"aday|başvuru|boy\W{0,3}kilo|red listesi|ön değerlendirme|tespit", t):
+        return "aday", False
     if re.search(r"sınav", t):
-        return "uygulama"
+        return "uygulama", False
     if re.search(r"alım ilan|alımı ilan|personel alım|istihdam", t):
-        return "ilan"
-    return "aday"
+        return "ilan", False
+    return "aday", False
 
 
 def siniflandir(baslik: str, komisyon_gruplari: dict[str, set[str]] | None = None) -> dict | None:
@@ -133,4 +155,5 @@ def siniflandir(baslik: str, komisyon_gruplari: dict[str, set[str]] | None = Non
         kurum_gruplari[k] = sorted(gs)
     if not kurum_gruplari:
         return None
-    return {"kurumlar": kurum_gruplari, "asama": asama_bul(t), "belirsiz": belirsiz}
+    asama, dogrula = asama_bul(t)
+    return {"kurumlar": kurum_gruplari, "asama": asama, "dogrula": dogrula, "belirsiz": belirsiz}

@@ -171,13 +171,93 @@
       const t = takip.has(k.id);
       return `<div class="satir" role="row" data-id="${esc(k.id)}" tabindex="0" aria-label="${esc(k.ad)} ayrıntıları">
         <span class="c-yildiz" role="cell"><button type="button" class="yildiz" data-takip="${esc(k.id)}" aria-pressed="${t}" aria-label="${esc(k.ad)} ${t ? "takipten çıkar" : "takip et"}">${YILDIZ}</button></span>
-        <span class="c-ad" role="cell"><span class="ad">${esc(k.ad)}</span>${ipucu}</span>
+        <span class="c-ad" role="cell"><span class="ad">${esc(k.ad)}${yeniSonucVar(k) ? ' <span class="yeni-rozet kucuk">Yeni sonuç</span>' : ""}</span>${ipucu}</span>
         <span class="kurlar">${kurHucre}</span>
         <span class="c-son" role="cell">${son ? tarih(son) : "—"}</span>
       </div>`;
     }).join("");
     $("#bos").hidden = ks.length > 0;
     $("#sayac").textContent = ks.length === K.komisyonlar.length ? `${K.komisyonlar.length} komisyon` : `${K.komisyonlar.length} komisyondan ${ks.length} tanesi`;
+  }
+
+  /* ---------- yeni açıklanan sonuçlar ---------- */
+  const YENI_GUN = 3;               // son kaç günün sonuçları öne çıkarılır
+  let sonZiyaret = "";              // ziyaretçinin bir önceki gelişi (ISO), tarayıcıda saklanır
+  let yeniHepsi = false;
+  // Duyurunun "görülme" anı: tarayıcı ilk gördüğü anı kaydeder; yoksa duyuru tarihi
+  const gorulme = (x) => x.ilk_gorulme || (x.tarih + "T00:00:00");
+  const gunOnce = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+  const once = (iso) => {
+    const dk = Math.round((Date.now() - new Date(iso).getTime()) / 6e4);
+    if (dk < 60) return `${Math.max(dk, 1)} dk önce`;
+    if (dk < 1440) return `${Math.round(dk / 60)} saat önce`;
+    return `${Math.round(dk / 1440)} gün önce`;
+  };
+  function unvanEtiketleri(k, kur, gruplar) {
+    const v = k.kurumlar[kur];
+    if (!v) return { adlar: [], kadro: 0 };
+    const us = v.unvanlar.filter((u) => !gruplar.length || gruplar.includes(u.grup));
+    const adlar = [...new Set(us.map((u) => u.unvan.replace(/\s+-\s+.*$/, "")))];
+    return { adlar, kadro: us.reduce((t, u) => t + u.toplam, 0), hepsi: !gruplar.length };
+  }
+  function yeniSonuclar() {
+    const sinir = gunOnce(YENI_GUN);
+    const gruplar = new Map();
+    for (const [id, d] of Object.entries(D.komisyonlar)) {
+      const k = K.byId[id];
+      if (!k || !d.duyurular) continue;
+      for (const x of d.duyurular) {
+        if (x.asama !== "sonuc" || gorulme(x).slice(0, 10) < sinir) continue;
+        for (const [kur, gs] of Object.entries(x.sinif?.kurumlar || {})) {
+          if (!k.kurumlar[kur]) continue;
+          if (durum.kurum && durum.kurum !== kur) continue;
+          const key = id + "|" + kur;
+          const g = gruplar.get(key) || { k, kur, gruplar: new Set(), hepsi: false, duyurular: [], zaman: "" };
+          if (!gs.length) g.hepsi = true;
+          gs.forEach((x2) => g.gruplar.add(x2));
+          g.duyurular.push(x);
+          if (gorulme(x) > g.zaman) g.zaman = gorulme(x);
+          gruplar.set(key, g);
+        }
+      }
+    }
+    return [...gruplar.values()].sort((a, b) => b.zaman.localeCompare(a.zaman) || a.k.ad.localeCompare(b.k.ad, "tr"));
+  }
+  function yeniCiz() {
+    const liste = yeniSonuclar();
+    const kutu = $("#yeni");
+    kutu.hidden = liste.length === 0;
+    if (!liste.length) return;
+    const yeniSay = sonZiyaret ? liste.filter((g) => g.zaman > sonZiyaret).length : 0;
+    const komSay = new Set(liste.map((g) => g.k.id)).size;
+    $("#yeni-alt").innerHTML = `Son ${YENI_GUN} günde <b>${komSay}</b> komisyon sonuç açıkladı` +
+      (yeniSay ? ` · <span class="yeni-rozet">${yeniSay} sonuç son ziyaretinden sonra</span>` : "");
+    const limit = yeniHepsi ? liste.length : (DAR ? 4 : 8);
+    $("#yeni-liste").innerHTML = liste.slice(0, limit).map((g) => {
+      const e = unvanEtiketleri(g.k, g.kur, g.hepsi ? [] : [...g.gruplar]);
+      const yeni = sonZiyaret && g.zaman > sonZiyaret;
+      const son = g.duyurular.sort((a, b) => gorulme(b).localeCompare(gorulme(a)))[0];
+      const zamanMetni = son.ilk_gorulme ? `${once(son.ilk_gorulme)} tespit edildi` : tarih(son.tarih, true);
+      return `<li class="${yeni ? "taze" : ""}">
+        <div class="y-ust">
+          <button type="button" class="y-ad" data-ac="${esc(g.k.id)}">${esc(g.k.ad)}</button>
+          <span class="kur-etiket">${KURUM[g.kur].kisa}</span>
+          ${yeni ? '<span class="yeni-rozet">Yeni</span>' : ""}
+          <span class="y-zaman">${esc(zamanMetni)}</span>
+        </div>
+        <div class="y-unvan">${e.hepsi ? "Tüm ünvanlar" : esc(e.adlar.join(", "))}${e.kadro ? ` · <b class="num">${sayi(e.kadro)}</b> kadro` : ""}</div>
+        <a href="${esc(guvenliUrl(son.url))}" target="_blank" rel="noopener" title="${esc(son.baslik)}">${esc(kisaBaslik(son.baslik))}${g.duyurular.length > 1 ? ` <span class="y-ek">+${g.duyurular.length - 1} duyuru</span>` : ""}</a>
+      </li>`;
+    }).join("");
+    $("#yeni-daha").hidden = liste.length <= limit;
+    $("#yeni-daha").textContent = `Tümünü göster (${liste.length})`;
+  }
+  function yeniSonucVar(k) {
+    const d = D.komisyonlar[k.id];
+    if (!d || !d.duyurular) return false;
+    const sinir = gunOnce(YENI_GUN);
+    return d.duyurular.some((x) => x.asama === "sonuc" && gorulme(x).slice(0, 10) >= sinir &&
+      Object.keys(x.sinif?.kurumlar || {}).some((kur) => k.kurumlar[kur] && (!durum.kurum || durum.kurum === kur)));
   }
 
   /* ---------- akış ---------- */
@@ -194,7 +274,7 @@
         liste.push({ ...x, k, kurs });
       }
     }
-    liste.sort((a, b) => b.tarih.localeCompare(a.tarih) || a.k.ad.localeCompare(b.k.ad, "tr"));
+    liste.sort((a, b) => b.tarih.localeCompare(a.tarih) || gorulme(b).localeCompare(gorulme(a)) || a.k.ad.localeCompare(b.k.ad, "tr"));
     const goster = liste.slice(0, durum.akisLimit);
     $("#akis").innerHTML = goster.length ? goster.map((x) => `<li>
         <div class="akis-meta"><span>${tarih(x.tarih)}</span><button type="button" data-ac="${esc(x.k.id)}">${esc(x.k.ad)}</button>${x.kurs.map((kur) => `<span class="kur-etiket">${KURUM[kur].kisa}</span>`).join("")}${durum.sekme === "tum" ? hap(x.asama) : ""}</div>
@@ -295,7 +375,7 @@
     document.querySelectorAll("#f-durum [data-durum]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.durum === durum.filtre));
     $("#t-sonuc").setAttribute("aria-selected", durum.sekme === "sonuc");
     $("#t-tum").setAttribute("aria-selected", durum.sekme === "tum");
-    ozetCiz(); tabloCiz(); akisCiz();
+    yeniCiz(); ozetCiz(); tabloCiz(); akisCiz();
     sakla("alim-filtre", { kurum: durum.kurum, unvan: durum.unvan, filtre: durum.filtre, sira: durum.sira, sekme: durum.sekme });
   }
   function takipDegistir(id) {
@@ -336,6 +416,8 @@
       if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("satir")) { e.preventDefault(); detayAc(e.target.dataset.id); }
     });
     $("#akis").addEventListener("click", (e) => { const b = e.target.closest("[data-ac]"); if (b) detayAc(b.dataset.ac); });
+    $("#yeni-liste").addEventListener("click", (e) => { const b = e.target.closest("[data-ac]"); if (b) detayAc(b.dataset.ac); });
+    $("#yeni-daha").addEventListener("click", () => { yeniHepsi = true; yeniCiz(); });
     $("#t-sonuc").addEventListener("click", () => { durum.sekme = "sonuc"; durum.akisLimit = AKIS_ILK; hepsiniCiz(); });
     $("#t-tum").addEventListener("click", () => { durum.sekme = "tum"; durum.akisLimit = AKIS_ILK; hepsiniCiz(); });
     $("#daha").addEventListener("click", () => { durum.akisLimit += 12; akisCiz(); });
@@ -380,6 +462,10 @@
     } catch (_) {}
     K.byId = Object.fromEntries(K.komisyonlar.map((k) => [k.id, k]));
     takip = new Set(oku("alim-takip", []));
+    sonZiyaret = oku("alim-son-ziyaret", "");
+    // Aynı oturumda yenilemelerde "yeni" işaretleri kaybolmasın: 30 dakikadan eski ziyareti güncelle
+    const simdi = new Date().toISOString();
+    if (!sonZiyaret || Date.now() - new Date(sonZiyaret).getTime() > 30 * 6e4) sakla("alim-son-ziyaret", simdi);
     const f = oku("alim-filtre", {});
     if (f && typeof f === "object") {
       if (KURUM[f.kurum]) durum.kurum = f.kurum;

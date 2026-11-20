@@ -63,15 +63,23 @@ def arsiv_oku(site: str) -> list[dict]:
 SONUC_ICERIK = re.compile(
     r"sözlü sınav[ıi]? sonucunda|sözlü sınav sonuçlar|mülakat sonucunda|"
     r"\bas[iı]l (olarak|aday|liste)|\byedek (olarak|aday|liste)|başarı durumu|atanmaya hak|"
-    r"kesin başarı|nihai başarı|başarı sıralaması"
+    r"kesin başarı|nihai başarı|başarı sıralaması|kesin sonuç|göreve başla|atama işlem"
+)
+ONCEKI_ICERIK = re.compile(
+    r"başvuru sonuç|başvurusu kabul|aday tespit|sözlü sınava (girmeye|katılmaya|çağrıl)|"
+    r"uygulama sınav[ıi]?na|klavye sınav[ıi]?na|boy[ -]?kilo|sınav tarih"
 )
 
 
-def icerik_sonuc_mu(url: str) -> bool | None:
-    """Başlığı belirsiz duyurunun gövdesinde sonuç ifadesi var mı? (AMP sürümü daha sade)"""
+def icerik_oku(url: str) -> str | None:
+    """Başlığı belirsiz duyurunun metnine bakar (AMP sürümü daha sade).
+
+    Dönüş: "sonuc" (nihai sonuç ifadesi var), "onceki" (başvuru/çağrı gibi önceki aşama),
+    "belirsiz" (metin bir şey söylemiyor, ör. yalnızca PDF eki) ya da None (okunamadı).
+    """
     m = re.match(r"(https?://[^/]+)/(.+)$", url)
     if not m or "adalet.gov.tr" not in m.group(1) or m.group(2).lower().endswith((".pdf", ".doc", ".docx", ".xls", ".xlsx")):
-        return None
+        return "belirsiz"
     try:
         s = fetch(f"{m.group(1)}/amp/{m.group(2)}", tries=2).decode("utf-8", "replace")
     except Exception:
@@ -81,10 +89,19 @@ def icerik_sonuc_mu(url: str) -> bool | None:
             return None
     s = re.sub(r"<script.*?</script>|<style.*?</style>", " ", s, flags=re.S)
     body = metin(s.split("<body", 1)[-1])
-    # Menüden sonra gelen asıl içerik: "T.C." veya "ADALET BAKANLIĞI" ile başlar; bulamazsak tamamı
+    # Menüden sonra gelen asıl içerik çoğunlukla "T.C." ile başlar; bulamazsak tamamı
     i = body.find("T.C.")
     govde = tr_lower(body[i:] if i >= 0 else body)[:6000]
-    return bool(SONUC_ICERIK.search(govde))
+    if SONUC_ICERIK.search(govde):
+        return "sonuc"
+    if ONCEKI_ICERIK.search(govde):
+        return "onceki"
+    return "belirsiz"
+
+
+# Başvuru sonuçları Temmuz'da, sözlü sınavlar Ağustos–Kasım'da. Metni bir şey söylemeyen
+# "… Sonuçları" duyurusu bu tarihten sonraysa nihai sonuç sayılır.
+NIHAI_SONUC_ESIGI = "2026-09-01"
 
 
 def site_bul(kid: str, ad: str, siteler: dict) -> str | None:
@@ -139,6 +156,8 @@ def isle(k: dict, siteler: dict, onceki: dict) -> dict:
     site = site_bul(kid, k["ad"], siteler)
     kayit = {"site": site, "son_kontrol": simdi}
     tum = {(d["url"], d["baslik"]): d for d in eski.get("duyurular", [])}
+    ilk_tarama = not eski.get("son_basarili")  # ilk kez okunan komisyonun her duyurusu "yeni" sayılmasın
+    yeni: set = set()
     if site is None:
         kayit.update(erisim="bulunamadi", hata="Komisyonun sitesi bulunamadı")
     else:
@@ -146,7 +165,10 @@ def isle(k: dict, siteler: dict, onceki: dict) -> dict:
             for d in arsiv_oku(site):
                 if d["tarih"] < DONEM_BASLANGIC:
                     continue
-                tum.setdefault((d["url"], d["baslik"]), d)
+                key = (d["url"], d["baslik"])
+                if key not in tum:
+                    tum[key] = d
+                    yeni.add(key)
             kayit.update(erisim="ok", son_basarili=simdi)
         except Exception as e:
             kayit.update(erisim="hata", hata=f"{type(e).__name__}: {e}"[:200], son_basarili=eski.get("son_basarili"))
@@ -158,14 +180,28 @@ def isle(k: dict, siteler: dict, onceki: dict) -> dict:
         if s is None:
             continue
         asama = s["asama"]
-        # Başlık "sözlü sınavına ilişkin duyuru" gibi belirsizse gövdeye bak (bir kez; sonuç önbellekte)
-        if asama == "sozlu" and not re.search(r"girmeye hak|katılmaya hak|tarih|yer ve saat|çağrı|katılacak", tr_lower(d["baslik"])):
-            if d.get("icerik_sonuc") is None:
-                r = icerik_sonuc_mu(d["url"])
+        if "icerik_sonuc" in d:  # eski biçim
+            d["icerik"] = "sonuc" if d.pop("icerik_sonuc") else "belirsiz"
+        baslik = tr_lower(d["baslik"])
+        # "… Sözlü Sınavına İlişkin Duyuru": tarih duyurusu da olabilir, sonuç da → metne bak.
+        belirsiz_sozlu = (
+            asama == "sozlu"
+            and re.search(r"sözlü|mülakat", baslik)
+            and not re.search(r"uygula|klavye|başvuru|girmeye|katılmaya|hak kazan|tarih|yer ve saat|çağrı|katılacak|ertele|mazeret", baslik)
+        )
+        if belirsiz_sozlu or s.get("dogrula"):
+            if d.get("icerik") is None:
+                r = icerik_oku(d["url"])
                 if r is not None:  # erişilemediyse bir dahaki çalıştırmada tekrar dene
-                    d["icerik_sonuc"] = r
-            if d.get("icerik_sonuc"):
+                    d["icerik"] = r
+            ic = d.get("icerik")
+            if s.get("dogrula"):
+                # Eşikten önceki "sonuçlar" başvuru/boy-kilo sonuçlarıdır; sonrası metin aksini söylemedikçe nihai.
+                asama = "aday" if d["tarih"] < NIHAI_SONUC_ESIGI or ic == "onceki" else "sonuc"
+            elif ic == "sonuc":
                 asama = "sonuc"
+        if not ilk_tarama and "ilk_gorulme" not in d and (d["url"], d["baslik"]) in yeni:
+            d["ilk_gorulme"] = simdi
         d = {**d, "sinif": s, "asama": asama}
         duyurular.append(d)
     kayit["duyurular"] = duyurular
