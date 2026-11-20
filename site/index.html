@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Adliye Alım Takip</title>
+<meta name="description" content="2026 sözleşmeli personel alımlarında (Adalet Bakanlığı PGM, İcra, CTE) hangi adalet komisyonu sonuç açıkladı, nerede kaç kişi alınıyor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--SAYFA-->
+<header class="ust">
+  <div class="kap ust-ic">
+    <div class="ust-baslik">
+      <p class="eyebrow">2026 sözleşmeli personel alımları</p>
+      <h1>Adliye Alım Takip</h1>
+      <p class="alt">PGM, İcra ve CTE alımlarında hangi adalet komisyonu sonuç açıkladı, nerede kaç kişi alınıyor.</p>
+    </div>
+    <div class="guncelleme" id="guncelleme" aria-live="polite">Veriler yükleniyor…</div>
+  </div>
+</header>
+
+<main class="kap">
+  <section class="ozet" id="ozet" aria-label="Kurum özetleri"></section>
+
+  <div class="duzen">
+    <section class="kayit" aria-labelledby="kayit-baslik">
+      <div class="kayit-ust">
+        <h2 id="kayit-baslik">Komisyonlar</h2>
+        <p class="sayac" id="sayac"></p>
+      </div>
+
+      <div class="filtre" role="search">
+        <label class="ara">
+          <span class="gizli">Komisyon, adliye veya ilçe ara</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          <input id="ara" type="search" placeholder="Komisyon, adliye veya ilçe ara (ör. Karataş)" autocomplete="off">
+        </label>
+        <div class="secimler">
+          <label><span>Kurum</span>
+            <select id="f-kurum">
+              <option value="">Tüm kurumlar</option>
+              <option value="pgm">Adalet Bakanlığı (PGM)</option>
+              <option value="icra">İcra Kâtibi</option>
+              <option value="cte">CTE</option>
+            </select>
+          </label>
+          <label><span>Ünvan</span>
+            <select id="f-unvan" disabled><option value="">Önce kurum seçin</option></select>
+          </label>
+          <label><span>Sırala</span>
+            <select id="f-sira">
+              <option value="ad">Ada göre (A–Z)</option>
+              <option value="kadro">Kadro sayısına göre</option>
+              <option value="son">Son duyuruya göre</option>
+            </select>
+          </label>
+        </div>
+        <div class="cipler" role="group" aria-label="Duruma göre süz" id="f-durum">
+          <button type="button" data-durum="" aria-pressed="true">Tümü</button>
+          <button type="button" data-durum="sonuc" aria-pressed="false"><i class="nokta st-sonuc"></i>Sonuç açıklandı</button>
+          <button type="button" data-durum="kismen" aria-pressed="false"><i class="nokta st-kismen"></i>Kısmen</button>
+          <button type="button" data-durum="bekliyor" aria-pressed="false"><i class="nokta st-sozlu"></i>Açıklanmadı</button>
+          <button type="button" data-durum="bilinmiyor" aria-pressed="false"><i class="nokta st-bilinmiyor"></i>Kontrol edilemedi</button>
+          <button type="button" id="f-takip" class="takip-cip" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l2.3 4.8 5.2.7-3.8 3.6.9 5.2L10 14.3 5.4 16.8l.9-5.2L2.5 8l5.2-.7z"/></svg>Takip ettiklerim</button>
+        </div>
+      </div>
+
+      <div class="tablo" id="tablo" role="table" aria-label="Adalet komisyonları ve alım durumları">
+        <div class="satir bas" role="row">
+          <span role="columnheader" class="c-yildiz"><span class="gizli">Takip</span></span>
+          <span role="columnheader" class="c-ad">Komisyon</span>
+          <span role="columnheader" class="c-kur" data-kur="pgm">PGM</span>
+          <span role="columnheader" class="c-kur" data-kur="icra">İcra</span>
+          <span role="columnheader" class="c-kur" data-kur="cte">CTE</span>
+          <span role="columnheader" class="c-son">Son duyuru</span>
+        </div>
+        <div id="satirlar" role="rowgroup"></div>
+      </div>
+      <p class="bos" id="bos" hidden>Bu filtrelere uyan komisyon yok. Aramayı ya da durum filtresini değiştirin.</p>
+    </section>
+
+    <aside class="akis" aria-labelledby="akis-baslik">
+      <div class="akis-ust">
+        <h2 id="akis-baslik">Son duyurular</h2>
+        <div class="sekme" role="tablist">
+          <button type="button" role="tab" id="t-sonuc" aria-selected="true">Sonuçlar</button>
+          <button type="button" role="tab" id="t-tum" aria-selected="false">Tümü</button>
+        </div>
+      </div>
+      <ol class="akis-liste" id="akis"></ol>
+      <button type="button" class="daha" id="daha" hidden>Daha fazla göster</button>
+    </aside>
+  </div>
+
+  <section class="bilgi" aria-label="Kaynaklar ve yöntem">
+    <div>
+      <h2>Kaynaklar</h2>
+      <ul id="kaynaklar"></ul>
+    </div>
+    <div>
+      <h2>Durum nasıl belirleniyor?</h2>
+      <p>Her adalet komisyonunun sitesindeki duyuru arşivi düzenli olarak taranır. Bu alımlarla ilgili duyurular başlıklarına göre kurum, ünvan ve aşamaya ayrılır:</p>
+      <ol class="asamalar">
+        <li><b>Aday listesi</b> aday tespit, başvuru, boy-kilo ölçümü listeleri</li>
+        <li><b>Uygulama sınavı</b> uygulama (klavye) sınavı duyuruları</li>
+        <li><b>Sözlü sınav</b> uygulama sonuçları, sözlü sınava çağrılanlar</li>
+        <li><b>Sonuç açıklandı</b> sözlü sınav sonuçları, asıl ve yedek listeler</li>
+      </ol>
+      <p>Başlığı belirsiz duyurularda (“sözlü sınavına ilişkin duyuru” gibi) duyurunun metnine de bakılır. “Kısmen” o komisyonun bazı ünvanlarda sonuç açıkladığı anlamına gelir.</p>
+      <p class="uyari">Bu site resmi değildir ve bilgiler otomatik toplanır. Sonucunuzu her zaman ilgili komisyonun kendi sitesinden doğrulayın.</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="detay" aria-labelledby="d-baslik">
+  <div class="d-ic" id="d-ic"></div>
+</dialog>
+<!--/SAYFA-->
+<script src="app.js"></script>
+</body>
+</html>
