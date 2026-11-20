@@ -26,7 +26,8 @@ Takip edilen ilanlar:
    - **aşama**: aday listesi → uygulama sınavı → sözlü sınav → sonuç.
    - Başlığı belirsiz (“… Sözlü Sınavına İlişkin Duyuru”) duyuruların metni de okunur;
      “sözlü sınav sonucunda başarılı olan adaylar”, “asıl / yedek” gibi ifadeler varsa sonuç sayılır.
-   Görülen duyurular birikimli saklanır; arşiv sayfasından düşse bile kaybolmaz.
+   Görülen duyurular birikimli saklanır; arşiv sayfasından düşse bile kaybolmaz. Her duyurunun
+   ilk görüldüğü an (`ilk_gorulme`) kaydedilir; sitede son 3 günün sonuçları en üstte öne çıkarılır.
 3. **Site** (`site/`): Bağımlılıksız statik sayfa. `data/kontenjan.json`, `data/durum.json` ve
    `data/tarama.json` dosyalarını okur.
 
